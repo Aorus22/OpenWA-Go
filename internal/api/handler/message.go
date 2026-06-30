@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/base64"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/openwa/openwa-go/internal/engine"
@@ -16,6 +17,20 @@ func messageResponse(result engine.MessageResult) gin.H {
 		"id":        result.ID,
 		"timestamp": result.Timestamp,
 	}
+}
+
+// sendError logs the error and returns a JSON error response to the client.
+func sendError(c *gin.Context, status int, err error) {
+	msg := err.Error()
+	// Map known WhatsApp error codes to user-friendly messages
+	if strings.Contains(msg, "463") {
+		msg = "Pesan ditolak WhatsApp. Kemungkinan nomor tujuan tidak valid, memblokir Anda, atau terkena kebijakan WhatsApp."
+	} else if strings.Contains(msg, "429") {
+		msg = "Terlalu banyak permintaan. Tunggu beberapa saat lalu coba lagi."
+	} else if strings.Contains(msg, "401") {
+		msg = "Sesi tidak terautentikasi. Scan ulang QR code."
+	}
+	c.JSON(status, gin.H{"error": msg})
 }
 
 type MessageHandler struct {
@@ -100,7 +115,7 @@ func (h *MessageHandler) SendText(c *gin.Context) {
 	}
 	result, err := eng.SendTextMessage(req.ChatID, req.Text, req.Mentions)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
@@ -165,7 +180,7 @@ func (h *MessageHandler) sendMedia(c *gin.Context, mediaType string) {
 		return
 	}
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, messageResponse(result))
@@ -188,7 +203,7 @@ func (h *MessageHandler) SendLocation(c *gin.Context) {
 		Description: req.Description, Address: req.Address,
 	})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, messageResponse(result))
@@ -208,7 +223,7 @@ func (h *MessageHandler) SendContact(c *gin.Context) {
 	}
 	result, err := eng.SendContactMessage(req.ChatID, engine.ContactCard{Name: req.Name, Number: req.Number})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, messageResponse(result))
@@ -228,7 +243,7 @@ func (h *MessageHandler) Reply(c *gin.Context) {
 	}
 	result, err := eng.ReplyToMessage(req.ChatID, req.QuotedMessageID, req.Text)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, messageResponse(result))
@@ -247,7 +262,7 @@ func (h *MessageHandler) React(c *gin.Context) {
 		return
 	}
 	if err := eng.ReactToMessage(req.ChatID, req.MessageID, req.Emoji); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Reaction sent"})
@@ -267,7 +282,7 @@ func (h *MessageHandler) Forward(c *gin.Context) {
 	}
 	result, err := eng.ForwardMessage(req.FromChat, req.ChatID, req.MessageID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, messageResponse(result))
@@ -286,7 +301,7 @@ func (h *MessageHandler) Delete(c *gin.Context) {
 		return
 	}
 	if err := eng.DeleteMessage(req.ChatID, req.MessageID, req.ForEveryone); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Message deleted"})
@@ -380,7 +395,7 @@ func (h *MessageHandler) MarkRead(c *gin.Context) {
 	}
 	ok, err := eng.SendSeen(req.ChatID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": ok})
@@ -402,7 +417,7 @@ func (h *MessageHandler) MarkUnread(c *gin.Context) {
 	}
 	ok, err := eng.MarkUnread(req.ChatID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": ok})
@@ -424,7 +439,7 @@ func (h *MessageHandler) DeleteChat(c *gin.Context) {
 	}
 	ok, err := eng.DeleteChat(req.ChatID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": ok})
@@ -452,7 +467,7 @@ func (h *MessageHandler) SendTyping(c *gin.Context) {
 		state = engine.ChatStatePaused
 	}
 	if err := eng.SendChatState(req.ChatID, state); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"success": true})
@@ -467,7 +482,7 @@ func (h *MessageHandler) ForceKill(c *gin.Context) {
 		return
 	}
 	if err := eng.ForceDestroy(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	// Clean up in session service
@@ -515,7 +530,7 @@ func (h *MessageHandler) CheckNumber(c *gin.Context) {
 	number := c.Param("number")
 	exists, err := eng.CheckNumberExists(number)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	result := gin.H{"number": number, "exists": exists}
@@ -535,7 +550,7 @@ func (h *MessageHandler) ResolvePhone(c *gin.Context) {
 	}
 	phone, err := eng.ResolveContactPhone(c.Param("contactId"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"phone": phone})
@@ -549,7 +564,7 @@ func (h *MessageHandler) GetProfilePic(c *gin.Context) {
 	}
 	pic, err := eng.GetProfilePicture(c.Param("contactId"))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"url": pic})
@@ -563,7 +578,7 @@ func (h *MessageHandler) BlockContact(c *gin.Context) {
 		return
 	}
 	if err := eng.BlockContact(c.Param("contactId")); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Contact blocked"})
@@ -577,7 +592,7 @@ func (h *MessageHandler) UnblockContact(c *gin.Context) {
 		return
 	}
 	if err := eng.UnblockContact(c.Param("contactId")); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		sendError(c, http.StatusInternalServerError, err)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Contact unblocked"})
