@@ -6,11 +6,11 @@ FROM docker.io/node:22-alpine AS dashboard-builder
 
 WORKDIR /app
 
-# Copy dashboard source (copied from OpenWA project)
-COPY dashboard-src/package*.json ./
+# Copy frontend source (from OpenWA dashboard)
+COPY frontend/package*.json ./
 RUN npm ci
 
-COPY dashboard-src/ .
+COPY frontend/ .
 RUN npm run build
 
 # ===== Stage 2: Go Builder =====
