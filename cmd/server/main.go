@@ -72,6 +72,11 @@ func main() {
 	)
 	sessionService := services.NewSessionService(dataDB, cfg, engineFactory)
 
+	// Reset all active session statuses to disconnected on startup
+	dataDB.Model(&models.Session{}).
+		Where("status IN ('ready', 'initializing', 'qr_ready', 'authenticating')").
+		Update("status", models.SessionStatusDisconnected)
+
 	// Initialize storage
 	var mediaStorage storage.MediaStorage
 	if cfg.StorageType == "s3" && cfg.S3Endpoint != "" {

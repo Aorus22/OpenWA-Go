@@ -95,6 +95,25 @@ func (h *AuthHandler) Create(c *gin.Context) {
 	})
 }
 
+func (h *AuthHandler) Get(c *gin.Context) {
+	id := c.Param("keyId")
+	var key models.ApiKey
+	if err := h.db.First(&key, "id = ?", id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Key not found"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"id":        key.ID,
+		"name":      key.Name,
+		"keyPrefix": key.KeyPrefix,
+		"role":      key.Role,
+		"isActive":  key.Enabled,
+		"createdAt": key.CreatedAt,
+		"lastUsedAt": key.LastUsedAt,
+		"expiresAt":  key.ExpiresAt,
+	})
+}
+
 func (h *AuthHandler) List(c *gin.Context) {
 	var keys []models.ApiKey
 	if err := h.db.Order("created_at DESC").Find(&keys).Error; err != nil {

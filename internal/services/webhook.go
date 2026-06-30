@@ -83,6 +83,15 @@ func (s *WebhookService) GetWebhooks(sessionID string) ([]models.Webhook, error)
 	return hooks, nil
 }
 
+// ListAllWebhooks returns all webhooks across all sessions.
+func (s *WebhookService) ListAllWebhooks() ([]models.Webhook, error) {
+	var hooks []models.Webhook
+	if err := s.db.Find(&hooks).Error; err != nil {
+		return nil, err
+	}
+	return hooks, nil
+}
+
 // UpdateWebhook updates a webhook endpoint.
 func (s *WebhookService) UpdateWebhook(id, url, events, secret string, enabled bool, filters string) (*models.Webhook, error) {
 	if s.ssrfProtect && url != "" {

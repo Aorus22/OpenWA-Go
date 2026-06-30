@@ -49,7 +49,7 @@ func Setup(
 	})
 	ak := api.Group("/auth/api-keys")
 	ak.GET("", authHandler.List)
-	ak.GET("/:keyId", authHandler.List) // fallback to list 
+	ak.GET("/:keyId", authHandler.Get) 
 	ak.POST("", authHandler.Create)
 	ak.PUT("/:keyId", authHandler.Update)
 	ak.DELETE("/:keyId", authHandler.Delete)
@@ -70,8 +70,17 @@ func Setup(
 	api.PUT("/settings", infraHandler.Status)
 
 	// ── Stats ──
-	api.GET("/stats/overview", infraHandler.Status)
-	api.GET("/stats/messages", infraHandler.Status)
+	api.GET("/sessions/stats/overview", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"total": 0, "active": 0, "ready": 0,
+			"disconnected": 0, "byStatus": gin.H{},
+		})
+	})
+	api.GET("/stats/overview", infraHandler.StatsOverview)
+	api.GET("/stats/messages", infraHandler.StatsMessages)
+
+	// ── Webhooks (all) ──
+	api.GET("/webhooks", webhookHandler.ListAll)
 
 	// ── Plugins (stub) ──
 	api.GET("/plugins", func(c *gin.Context) { c.JSON(200, []gin.H{}) })

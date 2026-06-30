@@ -67,3 +67,38 @@ func (h *InfraHandler) Engines(c *gin.Context) {
 func (h *InfraHandler) CurrentEngine(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"engine": "whatsmeow"})
 }
+
+// StatsOverview returns aggregate stats in the dashboard format.
+func (h *InfraHandler) StatsOverview(c *gin.Context) {
+	var totalSessions, readySessions int64
+	h.dataDB.Model(&models.Session{}).Count(&totalSessions)
+	h.dataDB.Model(&models.Session{}).Where("status = ?", models.SessionStatusReady).Count(&readySessions)
+
+	c.JSON(http.StatusOK, gin.H{
+		"sessions": gin.H{
+			"active": readySessions,
+			"total":  totalSessions,
+			"byStatus": gin.H{},
+		},
+		"messages": gin.H{
+			"sent":     0,
+			"received": 0,
+			"failed":   0,
+			"today": gin.H{
+				"sent":     0,
+				"received": 0,
+			},
+		},
+	})
+}
+
+// StatsMessages returns message stats (stub).
+func (h *InfraHandler) StatsMessages(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"timeSeries": []gin.H{},
+		"byType":     gin.H{},
+		"bySession":  []gin.H{},
+		"topChats":   []gin.H{},
+	})
+}
+

@@ -3,8 +3,10 @@ package handler
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/openwa/openwa-go/internal/models"
 	"github.com/openwa/openwa-go/internal/services"
 )
 
@@ -42,7 +44,6 @@ func (h *SessionHandler) Create(c *gin.Context) {
 func (h *SessionHandler) FindAll(c *gin.Context) {
 	limit := 0
 	offset := 0
-	// Parse limit/offset from query params
 	if l := c.Query("limit"); l != "" {
 		if parsed, err := parseInt(l); err == nil {
 			limit = parsed
@@ -60,11 +61,16 @@ func (h *SessionHandler) FindAll(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, sessions)
+	// Map to dashboard format
+	result := make([]gin.H, len(sessions))
+	for i, s := range sessions {
+		result[i] = sessionToMap(&s)
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (h *SessionHandler) FindOne(c *gin.Context) {
-	id := 	c.Param("sessionId")
+	id := c.Param("sessionId")
 	session, err := h.sessionService.FindOne(id)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
@@ -72,17 +78,38 @@ func (h *SessionHandler) FindOne(c *gin.Context) {
 	}
 
 	// Attach QR code if engine is running
+	m := sessionToMap(session)
 	if eng, err := h.sessionService.GetEngine(id); err == nil {
 		if qr := eng.GetQRCode(); qr != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"session": session,
-				"qrCode":  *qr,
-			})
-			return
+			m["qrCode"] = *qr
 		}
 	}
 
-	c.JSON(http.StatusOK, gin.H{"session": session})
+	c.JSON(http.StatusOK, m)
+}
+
+// sessionToMap converts a Session to the format the dashboard expects.
+func sessionToMap(s *models.Session) gin.H {
+	m := gin.H{
+		"id":        s.ID,
+		"name":      s.Name,
+		"status":    s.Status,
+		"createdAt": s.CreatedAt,
+		"updatedAt": s.UpdatedAt,
+		"lastError": s.LastError,
+	}
+	if s.Phone != nil {
+		m["phone"] = *s.Phone
+	}
+	if s.PushName != nil {
+		m["pushName"] = *s.PushName
+	}
+	if s.LastActiveAt != nil {
+		m["lastActive"] = s.LastActiveAt.Format(time.RFC3339)
+	} else {
+		m["lastActive"] = nil
+	}
+	return m
 }
 
 func (h *SessionHandler) Delete(c *gin.Context) {
