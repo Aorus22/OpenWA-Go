@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  openwa-go:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "2785:2785"
+    volumes:
+      - .:/app
+      - /app/go/pkg/mod
+      - openwa-data:/app/data
+      - ../OpenWA/dashboard/dist:/app/dashboard/dist:ro
+    environment:
+      - API_PORT=2785
+      - LOG_LEVEL=debug
+      - DATABASE_TYPE=sqlite
+      - DATABASE_NAME=/app/data/openwa.sqlite
+      - MAIN_DATABASE_NAME=/app/data/main.sqlite
+      - BAILEYS_AUTH_DIR=/app/data/whatsmeow
+      - API_MASTER_KEY=dev-admin-key
+      - CORS_ORIGINS=*
+      - STORAGE_TYPE=local
+      - STORAGE_LOCAL_PATH=/app/data/media
+      - SERVE_DASHBOARD=true
+    restart: unless-stopped
+
+volumes:
+  openwa-data:
