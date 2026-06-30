@@ -9,6 +9,15 @@ import (
 	"github.com/openwa/openwa-go/internal/services"
 )
 
+// messageResponse wraps a MessageResult into the format the dashboard expects.
+func messageResponse(result engine.MessageResult) gin.H {
+	return gin.H{
+		"messageId": result.ID,
+		"id":        result.ID,
+		"timestamp": result.Timestamp,
+	}
+}
+
 type MessageHandler struct {
 	sessionService *services.SessionService
 }
@@ -94,7 +103,11 @@ func (h *MessageHandler) SendText(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{
+		"messageId": result.ID,
+		"id":        result.ID,
+		"timestamp": result.Timestamp,
+	})
 }
 
 // POST /sessions/:sessionId/messages/send-image etc
@@ -155,7 +168,7 @@ func (h *MessageHandler) sendMedia(c *gin.Context, mediaType string) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, messageResponse(result))
 }
 
 // POST /sessions/:sessionId/messages/send-location
@@ -178,7 +191,7 @@ func (h *MessageHandler) SendLocation(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, messageResponse(result))
 }
 
 // POST /sessions/:sessionId/messages/send-contact
@@ -198,7 +211,7 @@ func (h *MessageHandler) SendContact(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, messageResponse(result))
 }
 
 // POST /sessions/:sessionId/messages/reply
@@ -218,7 +231,7 @@ func (h *MessageHandler) Reply(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, messageResponse(result))
 }
 
 // POST /sessions/:sessionId/messages/react
@@ -257,7 +270,7 @@ func (h *MessageHandler) Forward(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, messageResponse(result))
 }
 
 // POST /sessions/:sessionId/messages/delete
