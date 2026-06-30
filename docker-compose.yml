@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   openwa-go:
     build:
@@ -9,38 +7,24 @@ services:
       - "${API_PORT:-2785}:2785"
     volumes:
       - openwa-data:/app/data
-    environment:
-      - API_PORT=${API_PORT:-2785}
-      - LOG_LEVEL=${LOG_LEVEL:-info}
-      - DATABASE_TYPE=${DATABASE_TYPE:-sqlite}
-      - DATABASE_NAME=/app/data/openwa.sqlite
-      - MAIN_DATABASE_NAME=/app/data/main.sqlite
-      - BAILEYS_AUTH_DIR=/app/data/whatsmeow
-      - API_MASTER_KEY=dev-admin-key
-      - AUTO_START_SESSIONS=${AUTO_START_SESSIONS:-false}
-      - CORS_ORIGINS=${CORS_ORIGINS:-*}
-      - STORAGE_TYPE=${STORAGE_TYPE:-local}
-      - STORAGE_LOCAL_PATH=/app/data/media
-      - SERVE_DASHBOARD=true
+    env_file: .env
     restart: unless-stopped
-    # Enable if you need proxy support
-    # network_mode: host
 
   # Optional: PostgreSQL
   postgres:
     image: postgres:16-alpine
     profiles: ["postgres"]
     environment:
-      POSTGRES_DB: ${DATABASE_NAME:-openwa}
-      POSTGRES_USER: ${DATABASE_USERNAME:-openwa}
-      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-change-me}
+      POSTGRES_DB: openwa
+      POSTGRES_USER: openwa
+      POSTGRES_PASSWORD: change-me
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     restart: unless-stopped
 
-  # Optional: Redis for queue
+  # Optional: Redis
   redis:
     image: redis:7-alpine
     profiles: ["redis"]
@@ -48,14 +32,14 @@ services:
       - "6379:6379"
     restart: unless-stopped
 
-  # Optional: MinIO for S3-compatible storage
+  # Optional: MinIO
   minio:
     image: minio/minio:latest
     profiles: ["s3"]
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
     volumes:
       - minio-data:/data
     ports:
